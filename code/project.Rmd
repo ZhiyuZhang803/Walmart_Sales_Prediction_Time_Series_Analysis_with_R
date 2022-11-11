@@ -1,29 +1,100 @@
 ---
-title: "time series"
-output: html_document
-date: "2022-11-11"
+title: 'DSO 522: Final Project - Walmart Sales Prediction'
+author: 'Group 8'
+output:
+  pdf_document: default
+  word_document: default
+header-includes: \usepackage{color}
+editor_options: 
+  chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+- Prepare Data
+
+Data Cleaning
+```{r}
+# Read Clean
+data = read.csv("Walmart.csv", header = T)
+head(data,3)
+
+# Create Time Target (143 weeks, 45 stores in total)
+data$week = rep(1:143,45)
+
+# Data Weekly Average Calculation
+data_clean = aggregate(data, list(DateAgg = data$Date), mean)
+index.ord = order(data_clean$week)
+data_clean = data_clean[index.ord,]
+data_clean = data_clean[,c(1,4,5,6,7,8,9)]
+# New Dataset: Only Include DataAgg, Weekly_Sales, Holiday_Flag, Temperature, Fuel_Price, CPI, Unemployment
+head(data_clean,5)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+Transforming to Time Series
+```{r}
+WeeklySales.ts = ts(data_clean$Weekly_Sales, start = c(2010,2,5), frequency = 52)
+plot(WeeklySales.ts)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+- Naive & Seasonal Forecast
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+- Exponential Smoothing & Moving Average/Trailing
+
+- ARIMA/ Seasonal ARIMA
+
+- Multiple Linear Regression
+
+step1: Construct other factors
+```{r}
+HolidayFlag.ts = ts(data_clean$Holiday_Flag, start = c(2010,2,5), frequency = 52)
+Temp.ts = ts(data_clean$Temperature, start = c(2010,2,5), frequency = 52)
+plot(Temp.ts)
+Fuel.ts = ts(data_clean$Fuel_Price, start = c(2010,2,5), frequency = 52)
+plot(Fuel.ts)
+Cpi.ts = ts(data_clean$CPI, start = c(2010,2,5), frequency = 52)
+plot(Cpi.ts)
+Rate.ts = ts(data_clean$Unemployment, start = c(2010,2,5), frequency = 52)
+plot(Rate.ts)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+step2: Find Relationships
+```{r}
+library(ggplot2)
+# WeeklySales.ts = ts(log(data_clean$Weekly_Sales), start = c(2010,2,5), frequency = 52)
+qplot(HolidayFlag.ts,WeeklySales.ts)
+qplot(Temp.ts,WeeklySales.ts)
+qplot(Fuel.ts,WeeklySales.ts)
+qplot(Cpi.ts,WeeklySales.ts)
+qplot(Rate.ts,WeeklySales.ts)
+```
+
+step3: Test CCF
+```{r}
+library(astsa)
+ccf(Temp.ts, WeeklySales.ts, 50)
+ccf(Fuel.ts, WeeklySales.ts, 50)
+ccf(Cpi.ts, WeeklySales.ts, 50)
+ccf(Rate.ts, WeeklySales.ts, 50)
+```
+
+step4: 
+```{r}
+library(forecast)
+# model 1
+m1 = tslm(WeeklySales.ts~Temp.ts+HolidayFlag.ts+Fuel.ts)
+summary(m1)
+accuracy(m1)
+# model 2
+m2 = tslm(WeeklySales.ts~Temp.ts+HolidayFlag.ts+Cpi.ts)
+summary(m2)
+accuracy(m2)
+# model 3
+m3 = tslm(WeeklySales.ts~Temp.ts+HolidayFlag.ts+Rate.ts)
+summary(m3)
+accuracy(m3)
+# model4
+m4 = tslm(WeeklySales.ts~Temp.ts+HolidayFlag.ts+Fuel.ts+Cpi.ts+Rate.ts)
+summary(m4)
+accuracy(m4)
+```
+Conclusion For Regression: Trash Variables and Trash Models!

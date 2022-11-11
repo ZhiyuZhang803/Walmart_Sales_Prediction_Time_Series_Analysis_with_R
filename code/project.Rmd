@@ -31,7 +31,7 @@ head(data_clean,5)
 
 Transforming to Time Series
 ```{r}
-WeeklySales.ts = ts(data_clean$Weekly_Sales, start = c(2010,2,5), frequency = 52)
+WeeklySales.ts = ts(data_clean$Weekly_Sales, start = c(2010,6), frequency = 52)
 plot(WeeklySales.ts)
 ```
 
@@ -46,21 +46,21 @@ plot(WeeklySales.ts)
 
 step1: Construct other factors
 ```{r}
-HolidayFlag.ts = ts(data_clean$Holiday_Flag, start = c(2010,2,5), frequency = 52)
-Temp.ts = ts(data_clean$Temperature, start = c(2010,2,5), frequency = 52)
+HolidayFlag.ts = ts(data_clean$Holiday_Flag, start = c(2010,6), frequency = 52)
+Temp.ts = ts(data_clean$Temperature, start = c(2010,6), frequency = 52)
 plot(Temp.ts)
-Fuel.ts = ts(data_clean$Fuel_Price, start = c(2010,2,5), frequency = 52)
+Fuel.ts = ts(data_clean$Fuel_Price, start = c(2010,6), frequency = 52)
 plot(Fuel.ts)
-Cpi.ts = ts(data_clean$CPI, start = c(2010,2,5), frequency = 52)
+Cpi.ts = ts(data_clean$CPI, start = c(2010,6), frequency = 52)
 plot(Cpi.ts)
-Rate.ts = ts(data_clean$Unemployment, start = c(2010,2,5), frequency = 52)
+Rate.ts = ts(data_clean$Unemployment, start = c(2010,6), frequency = 52)
 plot(Rate.ts)
 ```
 
 step2: Find Relationships
 ```{r}
 library(ggplot2)
-# WeeklySales.ts = ts(log(data_clean$Weekly_Sales), start = c(2010,2,5), frequency = 52)
+# WeeklySales.ts = ts(log(data_clean$Weekly_Sales), start = c(2010,6), frequency = 52)
 qplot(HolidayFlag.ts,WeeklySales.ts)
 qplot(Temp.ts,WeeklySales.ts)
 qplot(Fuel.ts,WeeklySales.ts)
@@ -72,6 +72,7 @@ step3: Test CCF
 ```{r}
 library(astsa)
 ccf(Temp.ts, WeeklySales.ts, 50)
+# 20/43
 ccf(Fuel.ts, WeeklySales.ts, 50)
 ccf(Cpi.ts, WeeklySales.ts, 50)
 ccf(Rate.ts, WeeklySales.ts, 50)

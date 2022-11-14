@@ -71,31 +71,68 @@ qplot(Rate.ts,WeeklySales.ts)
 step3: Test CCF
 ```{r}
 library(astsa)
-ccf(Temp.ts, WeeklySales.ts, 50)
-# 20/43
-ccf(Fuel.ts, WeeklySales.ts, 50)
-ccf(Cpi.ts, WeeklySales.ts, 50)
-ccf(Rate.ts, WeeklySales.ts, 50)
+Ccf(Temp.ts, WeeklySales.ts, 50)
+# 20/42 lag should be significant
+Ccf(Fuel.ts, WeeklySales.ts, 50)
+# 31 lag should be significant
+Ccf(Cpi.ts, WeeklySales.ts, 50)
+Ccf(Rate.ts, WeeklySales.ts, 50)
 ```
 
 step4: 
+Single Model:
 ```{r}
 library(forecast)
+# test temperature
+newdata1= ts.intersect(WeeklySales.ts, leadR20=lag(Temp.ts,-20), leadR42=lag(Temp.ts,-42))
 # model 1
-m1 = tslm(WeeklySales.ts~Temp.ts+HolidayFlag.ts+Fuel.ts)
+m1 = tslm(WeeklySales.ts~leadR20, data = newdata1)
 summary(m1)
 accuracy(m1)
 # model 2
-m2 = tslm(WeeklySales.ts~Temp.ts+HolidayFlag.ts+Cpi.ts)
+m2 = tslm(WeeklySales.ts~leadR42, data = newdata1)
 summary(m2)
 accuracy(m2)
+# Obviously, both two models do not have good prediction power. However, first one is a little bit better.
+```
+```{r}
+# test temperature
+newdata2= ts.intersect(WeeklySales.ts, leadR31=lag(Fuel.ts,-31),Fuel.ts)
 # model 3
-m3 = tslm(WeeklySales.ts~Temp.ts+HolidayFlag.ts+Rate.ts)
+m3 = tslm(WeeklySales.ts~leadR31, data = newdata2)
 summary(m3)
 accuracy(m3)
-# model4
-m4 = tslm(WeeklySales.ts~Temp.ts+HolidayFlag.ts+Fuel.ts+Cpi.ts+Rate.ts)
+# model 4
+m4 = tslm(WeeklySales.ts~Fuel.ts, data = newdata2)
 summary(m4)
 accuracy(m4)
+# Obviously, both two models do not have good prediction power. However, first one is a little bit better.
 ```
+Hybrid Model:
+```{r}
+# Build Final Model
+newdata= ts.intersect(WeeklySales.ts, fuel=lag(Fuel.ts,-31), temp=lag(Temp.ts,-20), holiday = HolidayFlag.ts, cpi = Cpi.ts, rate = Rate.ts)
+# model 5
+m5 = tslm(WeeklySales.ts~ temp+fuel, data = newdata)
+summary(m5)
+accuracy(m5)
+# model 6
+m6 = tslm(WeeklySales.ts~ temp+fuel+holiday, data = newdata)
+summary(m6)
+accuracy(m6)
+# model 7 
+m7 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi, data = newdata)
+summary(m7)
+accuracy(m7)
+# model 8
+m8 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi+rate, data = newdata)
+summary(m8)
+accuracy(m8)
+# All models are horrible, m7 should be the best.
+```
+Plot:
+```{r}
+autoplot(m7$fitted.values) + autolayer(WeeklySales.ts)
+```
+
 Conclusion For Regression: Trash Variables and Trash Models!

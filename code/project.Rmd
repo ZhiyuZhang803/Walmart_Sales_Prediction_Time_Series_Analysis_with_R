@@ -9,22 +9,43 @@ editor_options:
   chunk_output_type: console
 ---
 
-- Prepare Data
+- Library Import 
+```{r}
+library(ggplot2)
+library(forecast)
+library(zoo)
+```
+
+## Data Preparation
 
 Data Cleaning
 ```{r}
 # Read Clean
-data = read.csv("Walmart.csv", header = T)
+data = read.csv("../Walmart.csv", header = T)
 head(data,3)
 
 # Create Time Target (143 weeks, 45 stores in total)
 data$week = rep(1:143,45)
 
+require(dplyr)
+data_clean <- data%>%group_by(Date) %>%
+  summarise(Weekly_Sales = mean(Weekly_Sales),
+            week = mean(week),
+            Holiday_Flag = mean(Holiday_Flag),
+            Temperature = mean(Temperature),
+            Fuel_Price = mean(Fuel_Price),
+            CPI = mean(CPI), 
+            Unemployment = mean(Unemployment),
+            .groups = 'drop')
+
+data_clean <- data_clean[order(data_clean$week),]
+View(data_clean)
+
 # Data Weekly Average Calculation
-data_clean = aggregate(data, list(DateAgg = data$Date), mean)
-index.ord = order(data_clean$week)
-data_clean = data_clean[index.ord,]
-data_clean = data_clean[,c(1,4,5,6,7,8,9)]
+# data_clean = aggregate(data, list(DateAgg = data$Date), mean)
+# index.ord = order(data_clean$week)
+# data_clean = data_clean[index.ord,]
+# data_clean = data_clean[,c(1,4,5,6,7,8,9)]
 # New Dataset: Only Include DataAgg, Weekly_Sales, Holiday_Flag, Temperature, Fuel_Price, CPI, Unemployment
 head(data_clean,5)
 ```
@@ -35,16 +56,117 @@ WeeklySales.ts = ts(data_clean$Weekly_Sales, start = c(2010,6), frequency = 52)
 plot(WeeklySales.ts)
 ```
 
+Train Test Split
+training set: '2010-02-05' to '2012-02-03' (105 weeks)
+validation set: '2012-02-03' to '2012-10-26' (38 weeks)
 
-- Naive & Seasonal Forecast
+```{r}
+n = length(WeeklySales.ts)
+nValid = 38
+nTrain = n - nValid
 
-- Exponential Smoothing & Moving Average/Trailing
+WeeklySales.train = window(WeeklySales.ts, 
+                          start = c(2010,6),
+                          end = c(2010,5+nTrain))
+WeeklySales.test = window(WeeklySales.ts,
+                          start = c(2010,5+nTrain+1))
+WeeklySales.train
+WeeklySales.test
+```
 
-- ARIMA/ Seasonal ARIMA
 
-- Multiple Linear Regression
+## Naive & Seasonal Forecast
 
-step1: Construct other factors
+## Exponential Smoothing & Moving Average/Trailing
+
+## ARIMA/ Seasonal ARIMA
+Step 1: De-trend the data 
+```{r}
+# Remove the trend from of the time series data
+dWeeklySales.ts = diff(WeeklySales.ts,1)
+autoplot(dWeeklySales.ts)
+
+# Train Test Split
+dn = length(dWeeklySales.ts)
+dValid = 38
+dTrain = dn - dValid
+
+dWeeklySales.train = window(dWeeklySales.ts, 
+                          start = c(2010,7),
+                          end = c(2010,6+dTrain))
+dWeeklySales.test = window(dWeeklySales.ts,
+                          start = c(2010,6+dTrain+1))
+
+```
+
+Step 2: Use the training set and plot the ACF and PACF functions of the growth rate of the weekly sales found in previous part.
+```{r}
+par(mfrow = c(1,2))
+Acf(dWeeklySales.train,52, main = "")
+Pacf(dWeeklySales.train,52,main = "")
+par(mfrow = c(1,1))
+```
+
+According to the ACF and PACF plots, the ACF is tailing of and PACF is also tailing off within the first season.The ACF is cutting off after the first season. 
+We will try SARMA(1,0,1)x(0,0,1) as our baseline model
+
+Step 3: Modeling
+```{r}
+# SARMA(1,0,1)x(0,0,1)
+m1 = Arima(dWeeklySales.train,
+           order = c(1,0,1),
+           seasonal = list(order = c(0,0,1),period = 52))
+m1.predict <- forecast(m1, h = 52, level = 0)
+
+autoplot(dWeeklySales.test, series = 'Actual')+
+  autolayer(m1.predict, series = 'Predicted')
+
+accuracy(m1.predict, dWeeklySales.test)
+autoplot(m1.predict)
+checkresiduals(m1)
+```
+For SARMA(1,0,1)x(0,0,1), the RMSE in training set is 76997.19 and RMSE in Test set is 50804.47.
+
+```{r}
+# SARMA(3,0,5)x(0,0,1)
+m2 = Arima(dWeeklySales.train, 
+           order = c(3,0,5),
+           seasonal = list(order = c(0,0,1),period = 52))
+m2.predict <- forecast(m2, h = 52, level = 0)
+
+autoplot(dWeeklySales.test, series = 'Actual')+
+  autolayer(m2.predict, series = 'Predicted')
+
+accuracy(m2.predict, dWeeklySales.test)
+
+autoplot(m2.predict)
+checkresiduals(m2.predict)
+```
+For SARMA(3,0,5)x(0,0,1), the RMSE in training set is 69168.37 and RMSE in Test set is 52014.26.
+
+```{r}
+# SARMA(1,0,4)x(0,0,1)
+m3 = Arima(dWeeklySales.train, 
+           order = c(1,0,4),
+           seasonal = list(order = c(0,0,1),period = 52))
+m3.predict <- forecast(m3, h = 52, level = 0)
+
+autoplot(dWeeklySales.test, series = 'Actual')+
+  autolayer(m3.predict, series = 'Predicted')
+
+accuracy(m3.predict, dWeeklySales.test)
+
+autoplot(m3.predict)
+checkresiduals(m3.predict)
+```
+For SARMA(1,0,4)x(0,0,1), the RMSE in training set is 73051.41 and RMSE in Test set is 50396.00. 
+
+
+
+
+## Multiple Linear Regression
+
+Step1: Construct other factors
 ```{r}
 HolidayFlag.ts = ts(data_clean$Holiday_Flag, start = c(2010,6), frequency = 52)
 Temp.ts = ts(data_clean$Temperature, start = c(2010,6), frequency = 52)
@@ -57,7 +179,7 @@ Rate.ts = ts(data_clean$Unemployment, start = c(2010,6), frequency = 52)
 plot(Rate.ts)
 ```
 
-step2: Find Relationships
+Step2: Find Relationships
 ```{r}
 library(ggplot2)
 # WeeklySales.ts = ts(log(data_clean$Weekly_Sales), start = c(2010,6), frequency = 52)
@@ -68,7 +190,7 @@ qplot(Cpi.ts,WeeklySales.ts)
 qplot(Rate.ts,WeeklySales.ts)
 ```
 
-step3: Test CCF
+Step3: Test CCF
 ```{r}
 library(astsa)
 Ccf(Temp.ts, WeeklySales.ts, 50)
@@ -79,7 +201,7 @@ Ccf(Cpi.ts, WeeklySales.ts, 50)
 Ccf(Rate.ts, WeeklySales.ts, 50)
 ```
 
-step4: 
+Step4: 
 Single Model:
 ```{r}
 library(forecast)

@@ -14,20 +14,47 @@ editor_options:
 library(ggplot2)
 library(forecast)
 library(zoo)
+library(dplyr)
+library(skimr)
 ```
+
+## EDA
+Exploring the dataset
+```{r}
+# Explore the original dataset
+data = read.csv("Walmart.csv", header = T)
+head(data,3)
+
+# Explore the dataset
+# 1. Dimension of the dataset
+dim(data)
+
+#2. summary of the dataset
+summary(data)
+
+#3. Skim summary of the dataset
+skim(data)
+```
+
 
 ## Data Preparation
 
 Data Cleaning
 ```{r}
 # Read Clean
-data = read.csv("../Walmart.csv", header = T)
+data = read.csv("Walmart.csv", header = T)
 head(data,3)
 
 # Create Time Target (143 weeks, 45 stores in total)
 data$week = rep(1:143,45)
 
+# Install dplyr 
+#install.packages("rlang")
+#install.packages("dplyr")
+#library(rlang)
+#library(dplyr)
 require(dplyr)
+
 data_clean <- data%>%group_by(Date) %>%
   summarise(Weekly_Sales = mean(Weekly_Sales),
             week = mean(week),
@@ -76,6 +103,25 @@ WeeklySales.test
 
 
 ## Naive & Seasonal Forecast
+```{r}
+# Naive Forecast
+naive = naive(WeeklySales.train, h=length(WeeklySales.test))
+accuracy(naive, WeeklySales.test)
+
+# Seasonal Forecast
+seasonal = snaive(WeeklySales.train, h= length(WeeklySales.test))
+accuracy(seasonal, WeeklySales.test)
+
+# Graph of Naive and seasonal forecast
+autoplot(WeeklySales.train)+
+  autolayer(naive, series ="Naive Forecast", PI=FALSE)+
+  autolayer(seasonal, series="Seasonal Forecast", PI=FALSE)+
+  autolayer(WeeklySales.test, series="Observed")
+
+```
+For Naive forecast, training set RMSE is 158487.6, and testing RMSE is 49706.2. 
+For Seasonla Forecast, training set RMSE is 43443.57, and testing RMSE is 45729.70. 
+
 
 ## Exponential Smoothing & Moving Average/Trailing
 
@@ -160,8 +206,6 @@ autoplot(m3.predict)
 checkresiduals(m3.predict)
 ```
 For SARMA(1,0,4)x(0,0,1), the RMSE in training set is 73051.41 and RMSE in Test set is 50396.00. 
-
-
 
 
 ## Multiple Linear Regression

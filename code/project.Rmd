@@ -66,7 +66,7 @@ data_clean <- data%>%group_by(Date) %>%
             .groups = 'drop')
 
 data_clean <- data_clean[order(data_clean$week),]
-# View(data_clean)
+View(data_clean)
 
 # Data Weekly Average Calculation
 # data_clean = aggregate(data, list(DateAgg = data$Date), mean)
@@ -76,6 +76,7 @@ data_clean <- data_clean[order(data_clean$week),]
 # New Dataset: Only Include DataAgg, Weekly_Sales, Holiday_Flag, Temperature, Fuel_Price, CPI, Unemployment
 head(data_clean,5)
 ```
+
 
 Transforming to Time Series
 ```{r}
@@ -162,7 +163,7 @@ Step 3: Modeling
 m1 = Arima(dWeeklySales.train,
            order = c(1,0,1),
            seasonal = list(order = c(0,0,1),period = 52))
-m1.predict <- forecast(m1, h = dValid, level = 0)
+m1.predict <- forecast(m1, h = 52, level = 0)
 
 autoplot(dWeeklySales.test, series = 'Actual')+
   autolayer(m1.predict, series = 'Predicted')
@@ -178,7 +179,7 @@ For SARMA(1,0,1)x(0,0,1), the RMSE in training set is 76997.19 and RMSE in Test 
 m2 = Arima(dWeeklySales.train, 
            order = c(3,0,5),
            seasonal = list(order = c(0,0,1),period = 52))
-m2.predict <- forecast(m2, h = dValid, level = 0)
+m2.predict <- forecast(m2, h = 52, level = 0)
 
 autoplot(dWeeklySales.test, series = 'Actual')+
   autolayer(m2.predict, series = 'Predicted')
@@ -195,7 +196,7 @@ For SARMA(3,0,5)x(0,0,1), the RMSE in training set is 69168.37 and RMSE in Test 
 m3 = Arima(dWeeklySales.train, 
            order = c(1,0,4),
            seasonal = list(order = c(0,0,1),period = 52))
-m3.predict <- forecast(m3, h = dValid, level = 0)
+m3.predict <- forecast(m3, h = 52, level = 0)
 
 autoplot(dWeeklySales.test, series = 'Actual')+
   autolayer(m3.predict, series = 'Predicted')
@@ -210,6 +211,25 @@ For SARMA(1,0,4)x(0,0,1), the RMSE in training set is 73051.41 and RMSE in Test 
 
 ## Multiple Linear Regression
 
+Step0: Add necessary columns
+Add a column consider Blackfriday and Christmas
+```{r}
+data_clean$is_Xmas_BF = rep(0, 143)
+for (week_flag in c(42,43,46,47))
+{
+  data_clean$is_Xmas_BF = ifelse(data_clean$is_Xmas_BF ==1,1,ifelse((data_clean$week-week_flag)/52==0|(data_clean$week-week_flag)/52==1,1,0))
+}
+```
+Add a column consider the low point after Christmas.
+```{r}
+data_clean$is_NY = rep(0, 143)
+for (week_flag in c(35,36,37,38,39,48,49,50,51))
+{
+  data_clean$is_NY = ifelse(data_clean$is_NY ==1,1,ifelse((data_clean$week-week_flag)/52==0|(data_clean$week-week_flag)/52==1,1,0))
+}
+```
+
+
 Step1: Construct other factors
 ```{r}
 HolidayFlag.ts = ts(data_clean$Holiday_Flag, start = c(2010,6), frequency = 52)
@@ -221,6 +241,10 @@ Cpi.ts = ts(data_clean$CPI, start = c(2010,6), frequency = 52)
 plot(Cpi.ts)
 Rate.ts = ts(data_clean$Unemployment, start = c(2010,6), frequency = 52)
 plot(Rate.ts)
+Xmas.ts = ts(data_clean$is_Xmas_BF, start = c(2010,6), frequency = 52)
+plot(Xmas.ts)
+Ny.ts = ts(data_clean$is_NY, start = c(2010,6), frequency = 52)
+plot(Ny.ts)
 ```
 
 Step2: Find Relationships
@@ -232,6 +256,8 @@ qplot(Temp.ts,WeeklySales.ts)
 qplot(Fuel.ts,WeeklySales.ts)
 qplot(Cpi.ts,WeeklySales.ts)
 qplot(Rate.ts,WeeklySales.ts)
+qplot(Xmas.ts,WeeklySales.ts)
+qplot(Ny.ts, WeeklySales.ts)
 ```
 
 Step3: Test CCF
@@ -243,12 +269,19 @@ Ccf(Fuel.ts, WeeklySales.ts, 50)
 # 31 lag should be significant
 Ccf(Cpi.ts, WeeklySales.ts, 50)
 Ccf(Rate.ts, WeeklySales.ts, 50)
+Ccf(Xmas.ts, WeeklySales.ts, 50)
+# really strong relationship in lag0
+Ccf(Ny.ts, WeeklySales.ts, 50)
+
 ```
 
 Step4: 
 Single Model:
 ```{r}
 library(forecast)
+library(tidyverse)
+# install.packages("rlang")
+lag <- stats::lag
 # test temperature
 newdata1= ts.intersect(WeeklySales.ts, leadR20=lag(Temp.ts,-20), leadR42=lag(Temp.ts,-42))
 # model 1
@@ -277,28 +310,34 @@ accuracy(m4)
 Hybrid Model:
 ```{r}
 # Build Final Model
-newdata= ts.intersect(WeeklySales.ts, fuel=lag(Fuel.ts,-31), temp=lag(Temp.ts,-20), holiday = HolidayFlag.ts, cpi = Cpi.ts, rate = Rate.ts)
+newdata= ts.intersect(WeeklySales.ts, fuel=lag(Fuel.ts,-31), temp=lag(Temp.ts,-20), holiday = HolidayFlag.ts, cpi = Cpi.ts, rate = Rate.ts, xmas = Xmas.ts, ny= Ny.ts)
 # model 5
-m5 = tslm(WeeklySales.ts~ temp+fuel, data = newdata)
+m5 = tslm(WeeklySales.ts~ temp+fuel+xmas+ny, data = newdata)
 summary(m5)
 accuracy(m5)
 # model 6
-m6 = tslm(WeeklySales.ts~ temp+fuel+holiday, data = newdata)
+m6 = tslm(WeeklySales.ts~ temp+fuel+holiday+xmas+ny, data = newdata)
 summary(m6)
 accuracy(m6)
 # model 7 
-m7 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi, data = newdata)
+m7 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi+xmas+ny, data = newdata)
 summary(m7)
 accuracy(m7)
 # model 8
-m8 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi+rate, data = newdata)
+m8 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi+rate+xmas+ny, data = newdata)
 summary(m8)
 accuracy(m8)
 # All models are horrible, m7 should be the best.
 ```
+
+```{r}
+checkresiduals(m6)
+```
+
 Plot:
 ```{r}
-autoplot(m7$fitted.values) + autolayer(WeeklySales.ts)
+autoplot(m6$fitted.values, ylab = "Walmart Sales", xlab = "Time",series = "Fitted Value", main = "Regression Prediction of Sales") 
++ autolayer(WeeklySales.ts, series = "True Value")
 ```
 
 Conclusion For Regression: Trash Variables and Trash Models!

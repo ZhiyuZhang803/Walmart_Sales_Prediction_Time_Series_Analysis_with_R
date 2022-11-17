@@ -332,12 +332,17 @@ accuracy(m8)
 
 ```{r}
 checkresiduals(m6)
+acf2(resid(m6), 52)
+
+# imply AR5
+
+m6New = sarima(WeeklySales.ts, 5,0,0, xreg=cbind(Temp.ts,Fuel.ts, HolidayFlag.ts, Xmas.ts, Ny.ts))
+# QUESNTION: HOW TO FORECAST?
 ```
 
 Plot:
 ```{r}
-autoplot(m6$fitted.values, ylab = "Walmart Sales", xlab = "Time",series = "Fitted Value", main = "Regression Prediction of Sales") 
-+ autolayer(WeeklySales.ts, series = "True Value")
+autoplot(m6, ylab = "Walmart Sales", xlab = "Time",series = "Fitted Value", main = "Regression Prediction of Sales") + autolayer(WeeklySales.ts, series = "True Value")
 ```
 
 Conclusion For Regression: Trash Variables and Trash Models!

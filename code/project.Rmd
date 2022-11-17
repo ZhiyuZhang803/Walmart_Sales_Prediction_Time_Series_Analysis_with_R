@@ -66,7 +66,7 @@ data_clean <- data%>%group_by(Date) %>%
             .groups = 'drop')
 
 data_clean <- data_clean[order(data_clean$week),]
-View(data_clean)
+# View(data_clean)
 
 # Data Weekly Average Calculation
 # data_clean = aggregate(data, list(DateAgg = data$Date), mean)
@@ -76,7 +76,6 @@ View(data_clean)
 # New Dataset: Only Include DataAgg, Weekly_Sales, Holiday_Flag, Temperature, Fuel_Price, CPI, Unemployment
 head(data_clean,5)
 ```
-
 
 Transforming to Time Series
 ```{r}
@@ -163,7 +162,7 @@ Step 3: Modeling
 m1 = Arima(dWeeklySales.train,
            order = c(1,0,1),
            seasonal = list(order = c(0,0,1),period = 52))
-m1.predict <- forecast(m1, h = 52, level = 0)
+m1.predict <- forecast(m1, h = dValid, level = 0)
 
 autoplot(dWeeklySales.test, series = 'Actual')+
   autolayer(m1.predict, series = 'Predicted')
@@ -179,7 +178,7 @@ For SARMA(1,0,1)x(0,0,1), the RMSE in training set is 76997.19 and RMSE in Test 
 m2 = Arima(dWeeklySales.train, 
            order = c(3,0,5),
            seasonal = list(order = c(0,0,1),period = 52))
-m2.predict <- forecast(m2, h = 52, level = 0)
+m2.predict <- forecast(m2, h = dValid, level = 0)
 
 autoplot(dWeeklySales.test, series = 'Actual')+
   autolayer(m2.predict, series = 'Predicted')
@@ -196,7 +195,7 @@ For SARMA(3,0,5)x(0,0,1), the RMSE in training set is 69168.37 and RMSE in Test 
 m3 = Arima(dWeeklySales.train, 
            order = c(1,0,4),
            seasonal = list(order = c(0,0,1),period = 52))
-m3.predict <- forecast(m3, h = 52, level = 0)
+m3.predict <- forecast(m3, h = dValid, level = 0)
 
 autoplot(dWeeklySales.test, series = 'Actual')+
   autolayer(m3.predict, series = 'Predicted')

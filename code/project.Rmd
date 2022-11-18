@@ -125,7 +125,6 @@ For Seasonla Forecast, training set RMSE is 43443.57, and testing RMSE is 45729.
 
 ## Exponential Smoothing & Moving Average/Trailing
 
-
 Moving Average
 ```{r}
 #install.packages("patchwork")
@@ -206,11 +205,11 @@ accuracy(WeeklySales.test, ma.roll.ts)
 ```
 
 Simple Exponential Smoothing (SES)
+```{r}
 #Model 1
 data.diff.ts = diff(WeeklySales.ts, lag=1)
 #data.diff.ts<- diff(lag_1, lag=12)
 
-# set up the training and testing sets
 
 nValid = 38
 
@@ -227,14 +226,14 @@ length(dvalid.ts)
 ann <- ets(dtrain.ts, model = "ANN")
 ann.pred <- forecast.ets(ann, h=nValid, level=0)
 
-#plot 
+
 autoplot(data.diff.ts) +
   autolayer(ann.pred, series = "Simple Exp. Smoothing")
 
 accuracy(ann.pred, dvalid.ts)
 ```
 ```{r}
-#Holt's Linear Trend Model
+Holt's Linear Trend Model
 nValid = 38
 
 train.ts=window(WeeklySales.ts, 

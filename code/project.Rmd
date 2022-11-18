@@ -125,6 +125,136 @@ For Seasonla Forecast, training set RMSE is 43443.57, and testing RMSE is 45729.
 
 ## Exponential Smoothing & Moving Average/Trailing
 
+
+Moving Average
+```{r}
+#install.packages("patchwork")
+library(patchwork)
+
+#Moving Average
+ma.centered6 = ma(WeeklySales.ts, order = 6, centre = TRUE)
+ma.centered12 = ma(WeeklySales.ts, order = 12, centre = TRUE)
+ma.centered24 = ma(WeeklySales.ts, order = 24, centre = TRUE)
+ma.centered48 = ma(WeeklySales.ts, order = 48, centre = TRUE)
+#Plot Centered MA
+ma6 = autoplot(WeeklySales.ts, xlab = "Time") +
+  autolayer(ma.centered6, lwd = 1.5, show.legend = FALSE) +
+  labs(title = "MA 6")
+
+ma12 = autoplot(WeeklySales.ts,  xlab = "Time") +
+  autolayer(ma.centered12, lwd = 1.5, show.legend = FALSE) +
+  labs(title = "MA 12")
+
+ma24 = autoplot(WeeklySales.ts, xlab = "Time") +
+  autolayer(ma.centered24, lwd = 1.5, show.legend = FALSE) +
+  labs(title = "MA 24")
+
+ma48 = autoplot(WeeklySales.ts, xlab = "Time") +
+  autolayer(ma.centered48, lwd = 1.5, show.legend = FALSE) +
+  labs(title = "MA 48")
+  
+
+(ma6 | ma12) /
+(ma24 | ma48)
+```
+Trailing Moving Average
+```{r}
+ma.trailing = rollmean(WeeklySales.ts, k = 12, align = "right")
+
+autoplot(WeeklySales.ts, ylab = "Weekly Sales", xlab = "Time", col="Black") +
+  autolayer(ma.centered12, series = "Moving Average", lwd = 1.5)+
+  autolayer(ma.trailing, series = "Trailing MA", lwd = 1.5)
+```
+
+```{r}
+
+nValid = 38
+ma.trail.pred.rolling <- rep(NA, nValid)
+
+for (i in 1:nValid){
+  nTrain = n-nValid+(i-1)
+  
+  train.ts <- window(WeeklySales.ts, 
+                     start = c(2010,6),
+                     end = c(2010,5+nTrain),
+                     frequency = 52)
+  
+  ma.trailing.roll = rollmean(train.ts, k = 12, align = "right")
+  last.ma = tail(ma.trailing.roll,1)
+  ma.trail.pred.rolling[i] = last.ma
+}
+
+ma.roll.ts = ts(ma.trail.pred.rolling,
+                start = c(2010, 5+length(WeeklySales.ts) - nValid +1),
+                frequency = 52)
+
+valid.mean = ts(rep(mean(valid.ts), nValid),
+                start = c(2010, length(WeeklySales.ts) - nValid +1),
+                frequency = 52)
+```
+```{r}
+autoplot(WeeklySales.ts, ylab = "Weekly Sales") +
+  autolayer(ma.trailing, series = "Trailing", lwd = 1.5)+
+  autolayer(WeeklySales.test, series = "Test")+
+  autolayer(ma.roll.ts, series = "Rolling", lwd = 1.5)
+```
+Accuracy
+```{r}
+ma.roll.ts
+
+accuracy(WeeklySales.test, ma.roll.ts)
+```
+
+Simple Exponential Smoothing (SES)
+#Model 1
+data.diff.ts = diff(WeeklySales.ts, lag=1)
+#data.diff.ts<- diff(lag_1, lag=12)
+
+# set up the training and testing sets
+
+nValid = 38
+
+dtrain.ts=window(data.diff.ts, start=c(2010, 7),
+                 end=c(2010, 6+length(data.diff.ts)-nValid),
+                 frequency = 52) 
+
+dvalid.ts=window(data.diff.ts, start=c(2010, 6+length(data.diff.ts)-nValid+1),
+                 frequency = 52)
+
+length(dtrain.ts)
+length(dvalid.ts)
+
+ann <- ets(dtrain.ts, model = "ANN")
+ann.pred <- forecast.ets(ann, h=nValid, level=0)
+
+#plot 
+autoplot(data.diff.ts) +
+  autolayer(ann.pred, series = "Simple Exp. Smoothing")
+
+accuracy(ann.pred, dvalid.ts)
+```
+```{r}
+#Holt's Linear Trend Model
+nValid = 38
+
+train.ts=window(WeeklySales.ts, 
+                start=c(2010, 7), 
+                end=c(2010, 6+length(WeeklySales.ts)-nValid),
+                frequency = 52)
+
+valid.ts=window(WeeklySales.ts, 
+                start=c(2010, 6+length(WeeklySales.ts)-nValid+1), 
+                frequency = 52)
+
+aan <- ets(train.ts, model = "AAN")
+aan.pred <- forecast.ets(aan, h=nValid, level=0)
+
+autoplot(WeeklySales.ts) +
+  autolayer(aan.pred, series = "AAN pred", col="blue")
+
+accuracy(aan.pred, valid.ts)
+```
+
 ## ARIMA/ Seasonal ARIMA
 Step 1: De-trend the data 
 ```{r}

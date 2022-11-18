@@ -232,8 +232,9 @@ autoplot(data.diff.ts) +
 
 accuracy(ann.pred, dvalid.ts)
 ```
+
 ```{r}
-Holt's Linear Trend Model
+#Holt's Linear Trend Model
 nValid = 38
 
 train.ts=window(WeeklySales.ts, 

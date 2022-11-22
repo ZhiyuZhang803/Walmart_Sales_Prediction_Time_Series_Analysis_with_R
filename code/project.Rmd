@@ -143,6 +143,11 @@ For Seasonla Forecast, training set RMSE is 43443.57, and testing RMSE is 45729.
 ## Exponential Smoothing & Moving Average/Trailing
 
 Moving Average
+
+- q1: 在用trailing ma （align right）预测之前，是不是要用simple ma去预测一下test？（就是一根直线的，见week 06_bb.rmd）
+- q2: 在rolling forward的时候，是不是可以把K=12调整一下，类似w=4或者6？
+- q3: 修正了valid mean问题
+
 ```{r}
 #install.packages("patchwork")
 library(patchwork)
@@ -204,13 +209,14 @@ ma.roll.ts = ts(ma.trail.pred.rolling,
                 start = c(2010, 5+length(WeeklySales.ts) - nValid +1),
                 frequency = 52)
 
-valid.mean = ts(rep(mean(valid.ts), nValid),
-                start = c(2010, length(WeeklySales.ts) - nValid +1),
+valid.mean = ts(rep(mean(WeeklySales.ts), nValid),
+                start = c(2010, 5+length(WeeklySales.ts) - nValid +1),
                 frequency = 52)
 ```
 ```{r}
 autoplot(WeeklySales.ts, ylab = "Weekly Sales") +
   autolayer(ma.trailing, series = "Trailing", lwd = 1.5)+
+  autolayer(valid.mean, series = "Original Mean",lwd = 1.5) +
   autolayer(WeeklySales.test, series = "Test")+
   autolayer(ma.roll.ts, series = "Rolling", lwd = 1.5)
 ```
@@ -291,7 +297,7 @@ dWeeklySales.test = window(dWeeklySales.ts,
                           start = c(2010,6+dTrain+1))
 
 ```
-
+- q4：这俩图如何描述比较好？
 Step 2: Use the training set and plot the ACF and PACF functions of the growth rate of the weekly sales found in previous part.
 ```{r}
 par(mfrow = c(1,2))
@@ -337,6 +343,8 @@ checkresiduals(m2.predict)
 ```
 For SARMA(3,0,5)x(0,0,1), the RMSE in training set is 69168.37 and RMSE in Test set is 52014.26.
 
+- q5: 选择后面那个会不会robust很多？+ residuals是不是会更合理一些？
+- q6： arima和sarima里面的数字，尤其是seasonal part，会不会是以monthly计数的？（只是疑问） https://otexts.com/fpp2/arima-ets.html
 ```{r}
 # SARMA(1,0,4)x(0,0,1)
 m3 = Arima(dWeeklySales.train, 
@@ -358,7 +366,7 @@ For SARMA(1,0,4)x(0,0,1), the RMSE in training set is 73051.41 and RMSE in Test 
 ## Multiple Linear Regression
 
 Step0: Add necessary columns
-Add a column consider Blackfriday and Christmas
+Add a column to create a dummy variable considering Blackfriday and Christmas periods.
 ```{r}
 data_clean$is_Xmas_BF = rep(0, 143)
 for (week_flag in c(42,43,46,47))
@@ -366,7 +374,7 @@ for (week_flag in c(42,43,46,47))
   data_clean$is_Xmas_BF = ifelse(data_clean$is_Xmas_BF ==1,1,ifelse((data_clean$week-week_flag)/52==0|(data_clean$week-week_flag)/52==1,1,0))
 }
 ```
-Add a column consider the low point after Christmas.
+Add a column to create a dummy variable considering the low point after Christmas and before Thanksgiving.
 ```{r}
 data_clean$is_NY = rep(0, 143)
 for (week_flag in c(35,36,37,38,39,48,49,50,51))
@@ -441,7 +449,7 @@ accuracy(m2)
 # Obviously, both two models do not have good prediction power. However, first one is a little bit better.
 ```
 ```{r}
-# test temperature
+# test fuel
 newdata2= ts.intersect(WeeklySales.ts, leadR31=lag(Fuel.ts,-31),Fuel.ts)
 # model 3
 m3 = tslm(WeeklySales.ts~leadR31, data = newdata2)
@@ -482,13 +490,13 @@ acf2(resid(m6), 52)
 
 # imply AR5
 
-m6New = sarima(WeeklySales.ts, 5,0,0, xreg=cbind(Temp.ts,Fuel.ts, HolidayFlag.ts, Xmas.ts, Ny.ts))
-# QUESNTION: HOW TO FORECAST?
-```
+m6New = Arima(WeeklySales.ts, order = c(5,0,0), xreg=cbind(Temp.ts,Fuel.ts, HolidayFlag.ts, Xmas.ts, Ny.ts))
+checkresiduals(m6New)
 
-Plot:
-```{r}
-autoplot(m6, ylab = "Walmart Sales", xlab = "Time",series = "Fitted Value", main = "Regression Prediction of Sales") + autolayer(WeeklySales.ts, series = "True Value")
+autoplot(WeeklySales.ts, series = 'Actual')+
+  autolayer(m6New$fitted, series = 'Predicted')
+
+accuracy(WeeklySales.ts, m6New$fitted)
 ```
 
 Conclusion For Regression: Trash Variables and Trash Models!

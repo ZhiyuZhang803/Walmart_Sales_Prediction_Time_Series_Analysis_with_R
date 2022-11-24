@@ -98,6 +98,19 @@ plot(CPI.ts, ylab='CPI')
 # Plot Unemployment
 Unemployment.ts = ts(data_clean$Unemployment, start = c(2010,6), frequency = 52)
 plot(Unemployment.ts, ylab='Unemployment')
+
+# Plot store
+h=hist(data$Store, main="The most frequent store",xlab="The store number",xlim=c(5,45), ylim=c(1,150), breaks=45)
+text(h$mids,h$counts,labels=h$counts, adj=c(0.5, -0.5))
+
+# Plot Holiday Flag
+h=hist(data$Holiday_Flag, ylim=c(1,6500), breaks=2, main='Frequency of Holiday Flag', xlab='Holiday Flag')
+text(h$mids,h$counts,labels=h$counts, adj=c(0.5, -0.5))
+
+# Plot Date
+temp_df=as.data.frame(table(data$Date))
+barplot(temp_df$Freq, ylim=c(0,50), xlim=c(1,20), ylab="Frequency", xlab="Date", main="Frequency of each Date")
+plot(temp_df, xlim=c(1,20), ylab="Frequency", xlab="Date", main="Frequency of Date")
 ```
 
 Train Test Split

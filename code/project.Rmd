@@ -432,14 +432,15 @@ autoplot(WeeklySales.ts) +
 accuracy(aan.pred, valid.ts)
 ```
 
-
 ## ARIMA/ Seasonal ARIMA
 Step 1: De-trend the data 
 ```{r}
 # Remove the trend from of the time series data
 dWeeklySales.ts = diff(WeeklySales.ts,1)
-autoplot(dWeeklySales.ts)
+autoplot(dWeeklySales.ts,ylab = 'WeeklySales_Diff(1)',main = 'Detrended Data')
 
+
+WeeklySales.ts
 # Train Test Split
 dn = length(dWeeklySales.ts)
 dValid = 38
@@ -449,45 +450,56 @@ dWeeklySales.train = window(dWeeklySales.ts,
                           start = c(2010,7),
                           end = c(2010,6+dTrain))
 dWeeklySales.test = window(dWeeklySales.ts,
-                          start = c(2010,6+dTrain+1))
+                          start = c(2010,7+dTrain))
 
 ```
 Step 2: Use the training set and plot the ACF and PACF functions of the growth rate of the weekly sales found in previous part.
 ```{r}
 par(mfrow = c(1,2))
-Acf(dWeeklySales.train,52, main = "")
-Pacf(dWeeklySales.train,52,main = "")
+Acf(dWeeklySales.train,104, main = "Training Set (104 Lag)")
+Pacf(dWeeklySales.train,104,main = "Training Set (104 Lag)")
 par(mfrow = c(1,1))
 ```
 
-According to the ACF and PACF plots, the ACF is tailing of and PACF is also tailing off within the first season.The ACF is cutting off after the first season. 
-We will try SARMA(1,0,1)x(0,0,1) as our baseline model
+```{r}
+par(mfrow = c(1,2))
+Acf(dWeeklySales.train,52, main = "Training Set (52 Lag)")
+Pacf(dWeeklySales.train,52,main = "Training Set (52 Lag)")
+par(mfrow = c(1,1))
+```
+
+According to the ACF and PACF plots, the ACF is cutting of and PACF is approximately tailing off within the first season.The ACF is cutting off after the first season. 
+We will try SARMA(0,0,1)x(0,0,1) as our baseline model
 
 Step 3: Modeling
 ```{r}
-# SARMA(1,0,1)x(0,0,1)
+# SARMA(0,0,1)x(0,0,1)
 m1 = Arima(dWeeklySales.train,
-           order = c(1,0,1),
+           order = c(0,0,1),
            seasonal = list(order = c(0,0,1),period = 52))
-m1.predict <- forecast(m1, h = dValid, level = 0)
+m1.predict <- forecast(m1, h = 52, level = 0)
 
-autoplot(dWeeklySales.test, series = 'Actual')+
+autoplot(dWeeklySales.train, ylab = 'WeeklySales_Diff(1)',
+main = 'Model: SARIMA(0,0,1)x(0,0,1)[52]')+
+  autolayer(dWeeklySales.test, series = 'Actual')+
   autolayer(m1.predict, series = 'Predicted')
 
 accuracy(m1.predict, dWeeklySales.test)
 autoplot(m1.predict)
 checkresiduals(m1)
 ```
-For SARMA(1,0,1)x(0,0,1), the RMSE in training set is 76997.19 and RMSE in Test set is 50804.47.
+For SARMA(0,0,1)x(0,0,1), the RMSE in training set is 69741.77 and RMSE in Test set is 52667.15.
 
 ```{r}
-# SARMA(3,0,5)x(0,0,1)
+# SARMA(0,0,5)x(0,0,1)
 m2 = Arima(dWeeklySales.train, 
-           order = c(3,0,5),
+           order = c(0,0,5),
            seasonal = list(order = c(0,0,1),period = 52))
 m2.predict <- forecast(m2, h = dValid, level = 0)
 
-autoplot(dWeeklySales.test, series = 'Actual')+
+autoplot(dWeeklySales.train, ylab = 'WeeklySales_Diff(1)',
+main = 'Model: SARIMA(0,0,5)x(0,0,1)[52]')+
+  autolayer(dWeeklySales.test, series = 'Actual')+
   autolayer(m2.predict, series = 'Predicted')
 
 accuracy(m2.predict, dWeeklySales.test)
@@ -495,16 +507,18 @@ accuracy(m2.predict, dWeeklySales.test)
 autoplot(m2.predict)
 checkresiduals(m2.predict)
 ```
-For SARMA(3,0,5)x(0,0,1), the RMSE in training set is 69168.37 and RMSE in Test set is 52014.26.
+For SARMA(0,0,5)x(0,0,1), the RMSE in training set is 69741.77 and RMSE in Test set is 52667.15.
 
 ```{r}
-# SARMA(1,0,4)x(0,0,1)
+# SARMA(0,0,4)x(0,0,1)
 m3 = Arima(dWeeklySales.train, 
-           order = c(1,0,4),
+           order = c(0,0,4),
            seasonal = list(order = c(0,0,1),period = 52))
 m3.predict <- forecast(m3, h = dValid, level = 0)
 
-autoplot(dWeeklySales.test, series = 'Actual')+
+autoplot(dWeeklySales.train, ylab = 'WeeklySales_Diff(1)',
+main = 'Model: SARIMA(0,0,4)x(0,0,1)[52]')+
+  autolayer(dWeeklySales.test, series = 'Actual')+
   autolayer(m3.predict, series = 'Predicted')
 
 accuracy(m3.predict, dWeeklySales.test)
@@ -512,7 +526,7 @@ accuracy(m3.predict, dWeeklySales.test)
 autoplot(m3.predict)
 checkresiduals(m3.predict)
 ```
-For SARMA(1,0,4)x(0,0,1), the RMSE in training set is 73051.41 and RMSE in Test set is 50396.00. 
+For SARMA(0,0,4)x(0,0,1), the RMSE in training set is 76211.03 and RMSE in Test set is 49990.20. 
 
 
 ## Multiple Linear Regression

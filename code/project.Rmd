@@ -631,38 +631,51 @@ Hybrid Model:
 ```{r}
 # Build Final Model
 newdata= ts.intersect(WeeklySales.ts, fuel=lag(Fuel.ts,-31), temp=lag(Temp.ts,-20), holiday = HolidayFlag.ts, cpi = Cpi.ts, rate = Rate.ts, xmas = Xmas.ts, ny= Ny.ts)
+# train and val
+newdata.train = ts(newdata[1:74,1:8],start = c(2010, 38),frequency=52)
+newdata.val = ts(newdata[75:112,1:8],start = c(2012, 8), frequency=52)
+
 # model 5
-m5 = tslm(WeeklySales.ts~ temp+fuel+xmas+ny, data = newdata)
+m5 = tslm(WeeklySales.ts~ temp+fuel+xmas+ny, data = newdata.train)
 summary(m5)
 accuracy(m5)
+m5p = predict(m5, newdata = newdata.val[,c(3,2,7,8)])
+accuracy(newdata.val[,1],m5p)
 # model 6
-m6 = tslm(WeeklySales.ts~ temp+fuel+holiday+xmas+ny, data = newdata)
+m6 = tslm(WeeklySales.ts~ temp+fuel+holiday+xmas+ny, data = newdata.train)
 summary(m6)
 accuracy(m6)
+m6p = predict(m6, newdata = newdata.val[,c(3,2,4,7,8)])
+accuracy(newdata.val[,1],m6p)
 # model 7 
-m7 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi+xmas+ny, data = newdata)
+m7 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi+xmas+ny, data = newdata.train)
 summary(m7)
 accuracy(m7)
+m7p = predict(m7, newdata = newdata.val[,c(3,2,4,5,7,8)])
+accuracy(newdata.val[,1],m7p)
 # model 8
-m8 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi+rate+xmas+ny, data = newdata)
+m8 = tslm(WeeklySales.ts~ temp+fuel+holiday+cpi+rate+xmas+ny, data = newdata.train)
 summary(m8)
 accuracy(m8)
-# All models are horrible, m7 should be the best.
+m8p = predict(m8, newdata = newdata.val[,c(3,2,4,5,6,7,8)])
+accuracy(newdata.val[,1],m8p)
+# All models are horrible, m6 should be the best.
 ```
 
 ```{r}
-checkresiduals(m7)
-acf2(resid(m7), 52)
+checkresiduals(m6)
 
 # imply AR5
+m6New = Arima(newdata.train[,1], order = c(5,0,0), xreg=newdata.train[,c(3,2,4,7,8)])
+checkresiduals(m6New)
 
-m7New = Arima(WeeklySales.ts, order = c(5,0,0), xreg=cbind(Temp.ts,Fuel.ts, HolidayFlag.ts, Cpi.ts, Xmas.ts, Ny.ts))
-checkresiduals(m7New)
+m6New.predict <- forecast(m6New, xreg = newdata.val[,c(3,2,4,7,8)], h = 38, level = 0)
+accuracy(newdata.val[,1], m6New.predict$mean)
+# it's worse than the original m6, so choose m6
 
-autoplot(WeeklySales.ts, series = 'Actual')+
-  autolayer(m7New$fitted, series = 'Predicted')
-
-accuracy(WeeklySales.ts, m7New$fitted)
+autoplot(WeeklySales.ts, xlab= "Weekly Sales",series = 'Actual')+
+  autolayer(m6$fitted, series = "Fitted")+
+  autolayer(ts(m6p, start = c(2012,8), frequency = 52), series = 'Predicted')
 ```
 
-Conclusion For Regression: m7New Model considering both autoregression and additional features performs best among all multiple linear regression.
+Conclusion For Regression: m6 Model considering temperature, fuel price, holiday&x-mas&new year dummy will be the best multiple linear regression model.

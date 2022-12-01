@@ -16,6 +16,7 @@ library(forecast)
 library(zoo)
 library(dplyr)
 library(skimr)
+library(astsa)
 ```
 
 ## EDA
@@ -49,10 +50,6 @@ head(data,3)
 data$week = rep(1:143,45)
 
 # Install dplyr 
-#install.packages("rlang")
-#install.packages("dplyr")
-#library(rlang)
-#library(dplyr)
 require(dplyr)
 
 data_clean <- data%>%group_by(Date) %>%
@@ -68,11 +65,6 @@ data_clean <- data%>%group_by(Date) %>%
 data_clean <- data_clean[order(data_clean$week),]
 # View(data_clean)
 
-# Data Weekly Average Calculation
-# data_clean = aggregate(data, list(DateAgg = data$Date), mean)
-# index.ord = order(data_clean$week)
-# data_clean = data_clean[index.ord,]
-# data_clean = data_clean[,c(1,4,5,6,7,8,9)]
 # New Dataset: Only Include DataAgg, Weekly_Sales, Holiday_Flag, Temperature, Fuel_Price, CPI, Unemployment
 head(data_clean,5)
 ```
@@ -531,8 +523,8 @@ For SARMA(0,0,4)x(0,0,1), the RMSE in training set is 76211.03 and RMSE in Test 
 
 ## Multiple Linear Regression
 
-Step0: Add necessary columns
-Add a column to create a dummy variable considering Blackfriday and Christmas periods.
+Step1: Add two additional features
+(1) Capture abnormal rise in sales from Thanksgiving to Chirstmas each year.
 ```{r}
 data_clean$is_Xmas_BF = rep(0, 143)
 for (week_flag in c(42,43,46,47))
@@ -540,7 +532,7 @@ for (week_flag in c(42,43,46,47))
   data_clean$is_Xmas_BF = ifelse(data_clean$is_Xmas_BF ==1,1,ifelse((data_clean$week-week_flag)/52==0|(data_clean$week-week_flag)/52==1,1,0))
 }
 ```
-Add a column to create a dummy variable considering the low point after Christmas and before Thanksgiving.
+(2) Capture abnormal drop in sales 5 weeks before Thanksgiving and 4 weeks after Christmas.
 ```{r}
 data_clean$is_NY = rep(0, 143)
 for (week_flag in c(35,36,37,38,39,48,49,50,51))
@@ -549,59 +541,52 @@ for (week_flag in c(35,36,37,38,39,48,49,50,51))
 }
 ```
 
-
-Step1: Construct other factors
+Step2: Construct time series objects we'll use in regression model.
 ```{r}
-HolidayFlag.ts = ts(data_clean$Holiday_Flag, start = c(2010,6), frequency = 52)
 Temp.ts = ts(data_clean$Temperature, start = c(2010,6), frequency = 52)
-plot(Temp.ts)
+plot(Temp.ts, ylab="Temperature")
 Fuel.ts = ts(data_clean$Fuel_Price, start = c(2010,6), frequency = 52)
-plot(Fuel.ts)
+plot(Fuel.ts, ylab="Fuel Price")
 Cpi.ts = ts(data_clean$CPI, start = c(2010,6), frequency = 52)
-plot(Cpi.ts)
+plot(Cpi.ts, ylab="CPI")
 Rate.ts = ts(data_clean$Unemployment, start = c(2010,6), frequency = 52)
-plot(Rate.ts)
+plot(Rate.ts, ylab = "Unemployment Rate")
+HolidayFlag.ts = ts(data_clean$Holiday_Flag, start = c(2010,6), frequency = 52)
 Xmas.ts = ts(data_clean$is_Xmas_BF, start = c(2010,6), frequency = 52)
-plot(Xmas.ts)
 Ny.ts = ts(data_clean$is_NY, start = c(2010,6), frequency = 52)
-plot(Ny.ts)
 ```
 
-Step2: Find Relationships
+Step3: Explore relationships between variables and weekly sales.
 ```{r}
-library(ggplot2)
-# WeeklySales.ts = ts(log(data_clean$Weekly_Sales), start = c(2010,6), frequency = 52)
-qplot(HolidayFlag.ts,WeeklySales.ts)
 qplot(Temp.ts,WeeklySales.ts)
 qplot(Fuel.ts,WeeklySales.ts)
 qplot(Cpi.ts,WeeklySales.ts)
 qplot(Rate.ts,WeeklySales.ts)
+qplot(HolidayFlag.ts,WeeklySales.ts)
 qplot(Xmas.ts,WeeklySales.ts)
 qplot(Ny.ts, WeeklySales.ts)
 ```
+For numeric variables, we do not find obvious trends. For dummy variables, we find positive relationship with HolidayFlag.ts and
+Fuel.ts variables as well as negative relationship with Ny.ts. Therefore, we want to test the lag reationship for those numeric
+variables seperatly in the next part.
 
-Step3: Test CCF
+Step4: Test CCF for numerical variables.
 ```{r}
-library(astsa)
-Ccf(Temp.ts, WeeklySales.ts, 50)
 # 20/42 lag should be significant
+Ccf(Temp.ts, WeeklySales.ts, 50)
+# 31 lag should be significant, also test minimum point at time 0.
 Ccf(Fuel.ts, WeeklySales.ts, 50)
-# 31 lag should be significant
+# All lags within decision boundary.
 Ccf(Cpi.ts, WeeklySales.ts, 50)
+# All lags within decision boundary.
 Ccf(Rate.ts, WeeklySales.ts, 50)
-Ccf(Xmas.ts, WeeklySales.ts, 50)
-# really strong relationship in lag0
-Ccf(Ny.ts, WeeklySales.ts, 50)
-
 ```
 
-Step4: 
-Single Model:
+Step5: Test best lag variables
 ```{r}
-library(forecast)
 library(tidyverse)
-# install.packages("rlang")
 lag <- stats::lag
+
 # test temperature
 newdata1= ts.intersect(WeeklySales.ts, leadR20=lag(Temp.ts,-20), leadR42=lag(Temp.ts,-42))
 # model 1
@@ -612,7 +597,7 @@ accuracy(m1)
 m2 = tslm(WeeklySales.ts~leadR42, data = newdata1)
 summary(m2)
 accuracy(m2)
-# Obviously, both two models do not have good prediction power. However, first one is a little bit better.
+# Obviously, neither model has good prediction power. However, first one is a little bit better.
 ```
 ```{r}
 # test fuel
@@ -625,9 +610,10 @@ accuracy(m3)
 m4 = tslm(WeeklySales.ts~Fuel.ts, data = newdata2)
 summary(m4)
 accuracy(m4)
-# Obviously, both two models do not have good prediction power. However, first one is a little bit better.
+# Obviously, neither model has good prediction power. However, first one is a little bit better.
 ```
-Hybrid Model:
+
+Step6: Build multiple linear regression models.
 ```{r}
 # Build Final Model
 newdata= ts.intersect(WeeklySales.ts, fuel=lag(Fuel.ts,-31), temp=lag(Temp.ts,-20), holiday = HolidayFlag.ts, cpi = Cpi.ts, rate = Rate.ts, xmas = Xmas.ts, ny= Ny.ts)
@@ -659,9 +645,10 @@ summary(m8)
 accuracy(m8)
 m8p = predict(m8, newdata = newdata.val[,c(3,2,4,5,6,7,8)])
 accuracy(newdata.val[,1],m8p)
-# All models are horrible, m6 should be the best.
 ```
+By balancing model complexity, robusty and accuracy, we select model 5 in this step.
 
+Step6: Consider AR term and final results.
 ```{r}
 checkresiduals(m5)
 
@@ -673,9 +660,8 @@ m5New.predict <- forecast(m5New, xreg = newdata.val[,c(3,2,7,8)], h = 38, level 
 accuracy(newdata.val[,1], m5New.predict$mean)
 # it's worse than the original m5, so choose m5
 
-autoplot(WeeklySales.ts, ylab= "Weekly Sales",series = 'Actual')+
+autoplot(WeeklySales.ts, ylab= "Weekly Sales",series = 'Actual', main="Final Models for MLR")+
   autolayer(m5$fitted, series = "Fitted")+
   autolayer(ts(m5p, start = c(2012,8), frequency = 52), series = 'Predicted')
 ```
-
 Conclusion For Regression: m5 Model considering temperature, fuel price, x-mas and new year dummy will be the best multiple linear regression model.

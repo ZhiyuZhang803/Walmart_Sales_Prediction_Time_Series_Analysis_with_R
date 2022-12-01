@@ -663,19 +663,19 @@ accuracy(newdata.val[,1],m8p)
 ```
 
 ```{r}
-checkresiduals(m6)
+checkresiduals(m5)
 
 # imply AR5
-m6New = Arima(newdata.train[,1], order = c(5,0,0), xreg=newdata.train[,c(3,2,4,7,8)])
-checkresiduals(m6New)
+m5New = Arima(newdata.train[,1], order = c(5,0,0), xreg=newdata.train[,c(3,2,7,8)])
+checkresiduals(m5New)
 
-m6New.predict <- forecast(m6New, xreg = newdata.val[,c(3,2,4,7,8)], h = 38, level = 0)
-accuracy(newdata.val[,1], m6New.predict$mean)
-# it's worse than the original m6, so choose m6
+m5New.predict <- forecast(m5New, xreg = newdata.val[,c(3,2,7,8)], h = 38, level = 0)
+accuracy(newdata.val[,1], m5New.predict$mean)
+# it's worse than the original m5, so choose m5
 
-autoplot(WeeklySales.ts, xlab= "Weekly Sales",series = 'Actual')+
-  autolayer(m6$fitted, series = "Fitted")+
-  autolayer(ts(m6p, start = c(2012,8), frequency = 52), series = 'Predicted')
+autoplot(WeeklySales.ts, ylab= "Weekly Sales",series = 'Actual')+
+  autolayer(m5$fitted, series = "Fitted")+
+  autolayer(ts(m5p, start = c(2012,8), frequency = 52), series = 'Predicted')
 ```
 
-Conclusion For Regression: m6 Model considering temperature, fuel price, holiday&x-mas&new year dummy will be the best multiple linear regression model.
+Conclusion For Regression: m5 Model considering temperature, fuel price, x-mas and new year dummy will be the best multiple linear regression model.

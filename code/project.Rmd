@@ -450,18 +450,18 @@ par(mfrow = c(1,1))
 
 According to the ACF and PACF plots, the ACF is approximately tailing off and PACF is cutting off within the first season.Both ACF and PACF is cutting off after the first season. 
 
-We will try SARIMA(5,0,0)x(1,0,1) first.
+We will try SARIMA(1,0,0)x(1,0,0) first.
 
 Step 3: Modeling
 ```{r}
-# SARMA(5,0,0)x(1,0,1)
+# SARMA(1,0,0)x(1,0,0)
 m1 = Arima(WeeklySales.train,
-           order = c(5,0,0),
-           seasonal = list(order = c(1,0,1),period = 52))
+           order = c(1,0,0),
+           seasonal = list(order = c(1,0,0),period = 52))
 m1.predict <- forecast(m1, h = nValid, level = 0)
 
 autoplot(WeeklySales.train, ylab = 'Weekly Sales',
-main = 'Model: SARIMA(5,0,0)x(1,0,1)[52]')+
+main = 'Model: SARIMA(1,0,0)x(1,0,0)[52]')+
   autolayer(WeeklySales.test, series = 'Actual')+
   autolayer(m1.predict, series = 'Predicted')+
   autolayer(m1$fitted,series = 'Fitted')
@@ -469,17 +469,17 @@ main = 'Model: SARIMA(5,0,0)x(1,0,1)[52]')+
 accuracy(m1.predict, WeeklySales.test)
 checkresiduals(m1)
 ```
-For SARMA(5,0,0)x(1,0,1), the RMSE in training set is 42055.07 and RMSE in Test set is 45170.57.
+ For SARMA(1,0,0)x(1,0,0)[52], the RMSE in training set is 41053.65 and RMSE in Test set is 44425.09. 
 
 ```{r}
-# SARMA(5,0,5)x(1,0,1)
+# SARMA(5,0,0)x(1,0,0)
 m2 = Arima(WeeklySales.train, 
-           order = c(5,0,5),
-           seasonal = list(order = c(1,0,1),period = 52))
+           order = c(5,0,0),
+           seasonal = list(order = c(1,0,0),period = 52))
 m2.predict <- forecast(m2, h = nValid, level = 0)
 
 autoplot(WeeklySales.train, ylab = 'WeeklySales',
-main = 'Model: SARIMA(5,0,5)x(1,0,1)[52]')+
+main = 'Model: SARIMA(5,0,0)x(1,0,0)[52]')+
   autolayer(WeeklySales.test, series = 'Actual')+
   autolayer(m2.predict, series = 'Predicted')+
   autolayer(m2$fitted,series = 'Train')
@@ -488,17 +488,17 @@ accuracy(m2.predict, WeeklySales.test)
 
 checkresiduals(m2.predict)
 ```
-For SARMA(5,0,5)x(1,0,1), the RMSE in training set is 40241.62 and RMSE in Test set is 47998.56.
+For SARMA(5,0,0)x(1,0,0)[52], the RMSE in training set is 42097.27 and RMSE in Test set is 44540.73.
 
 ```{r}
-# SARMA(5,0,1)x(1,0,1)
+# SARMA(5,0,0)x(1,0,1)
 m3 = Arima(WeeklySales.train, 
-           order = c(5,0,1),
+           order = c(5,0,0),
            seasonal = list(order = c(1,0,1),period = 52))
 m3.predict <- forecast(m3, h = nValid, level = 0)
 
 autoplot(WeeklySales.train, ylab = 'WeeklySales',
-main = 'Model: SARIMA(5,0,1)x(1,0,1)[52]')+
+main = 'Model: SARIMA(5,0,0)x(1,0,1)[52]')+
   autolayer(WeeklySales.test, series = 'Actual')+
   autolayer(m3.predict, series = 'Predicted')+
   autolayer(m3$fitted,series = 'Fitted')
@@ -507,17 +507,17 @@ accuracy(m3.predict, WeeklySales.test)
 
 checkresiduals(m3.predict)
 ```
-For SARMA(5,0,1)x(1,0,1), the RMSE in training set is 42052.92 and RMSE in Test set is 45152.82. 
+For SARMA(5,0,0)x(1,0,1)[52], the RMSE in training set is 42055.07 and RMSE in Test set is 45170.57.
 
 ```{r}
-# SARMA(5,0,0)x(1,0,0)
+# SARMA(5,0,1)x(1,0,1)
 m4 = Arima(WeeklySales.train, 
-           order = c(5,0,0),
-           seasonal = list(order = c(1,0,0),period = 52))
+           order = c(5,0,1),
+           seasonal = list(order = c(1,0,1),period = 52))
 m4.predict <- forecast(m4, h = nValid, level = 0)
 
 autoplot(WeeklySales.train, ylab = 'WeeklySales',
-main = 'Model: SARIMA(5,0,0)x(1,0,0)[52]')+
+main = 'Model: SARIMA(5,0,1)x(1,0,1)[52]')+
   autolayer(m4$fitted,series = 'Fitted')+
   autolayer(WeeklySales.test, series = 'Actual')+
   autolayer(m4.predict, series = 'Predicted')
@@ -527,7 +527,27 @@ accuracy(m4.predict, WeeklySales.test)
 
 checkresiduals(m4.predict)
 ```
-For SARMA(5,0,0)x(1,0,0), the RMSE in training set is 42097.27 and RMSE in Test set is 44540.73. We decide to use this model as our final model. 
+For SARMA(5,0,1)x(1,0,1)[52], the RMSE in training set is 42052.92 and RMSE in Test set is 45152.82.
+
+```{r}
+# SARMA(5,0,5)x(1,0,1)
+m5 = Arima(WeeklySales.train, 
+           order = c(5,0,5),
+           seasonal = list(order = c(1,0,1),period = 52))
+m5.predict <- forecast(m5, h = nValid, level = 0)
+
+autoplot(WeeklySales.train, ylab = 'Weekly Sales',
+main = 'Model: SARIMA(5,0,5)x(1,0,1)[52]')+
+  autolayer(m5$fitted,series = 'Fitted')+
+  autolayer(WeeklySales.test, series = 'Actual')+
+  autolayer(m5.predict, series = 'Predicted')
+  
+
+accuracy(m5.predict, WeeklySales.test)
+
+checkresiduals(m5.predict)
+```
+For SARMA(5,0,5)x(1,0,1)[52], the RMSE in training set is 40241.62 and RMSE in Test set is 47998.56.
 
 ## Multiple Linear Regression
 

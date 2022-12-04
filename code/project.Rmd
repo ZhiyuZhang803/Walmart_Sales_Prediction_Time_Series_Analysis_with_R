@@ -76,20 +76,20 @@ WeeklySales.ts = ts(data_clean$Weekly_Sales, start = c(2010,6), frequency = 52)
 plot(WeeklySales.ts, ylab='Weekly Sales')
 
 # Plot Temperature
-Temperature.ts = ts(data_clean$Temperature, start = c(2010,6), frequency = 52)
-plot(Temperature.ts, ylab='Temperature')
+Temp.ts = ts(data_clean$Temperature, start = c(2010,6), frequency = 52)
+plot(Temp.ts, ylab='Temperature')
 
 # Plot Fuel_Price
-Fuel.Price.ts = ts(data_clean$Fuel_Price, start = c(2010,6), frequency = 52)
-plot(Fuel.Price.ts, ylab='Fuel_Price')
+Fuel.ts = ts(data_clean$Fuel_Price, start = c(2010,6), frequency = 52)
+plot(Fuel.ts, ylab='Fuel_Price')
 
 # Plot CPI
-CPI.ts = ts(data_clean$CPI, start = c(2010,6), frequency = 52)
-plot(CPI.ts, ylab='CPI')
+Cpi.ts = ts(data_clean$CPI, start = c(2010,6), frequency = 52)
+plot(Cpi.ts, ylab='CPI')
 
 # Plot Unemployment
-Unemployment.ts = ts(data_clean$Unemployment, start = c(2010,6), frequency = 52)
-plot(Unemployment.ts, ylab='Unemployment')
+Rate.ts = ts(data_clean$Unemployment, start = c(2010,6), frequency = 52)
+plot(Rate.ts, ylab='Unemployment')
 
 # Plot store
 h=hist(data$Store, main="The most frequent store",xlab="The store number",xlim=c(5,45), ylim=c(1,150), breaks=45)
@@ -571,14 +571,6 @@ for (week_flag in c(35,36,37,38,39,48,49,50,51))
 
 Step2: Construct time series objects we'll use in regression model.
 ```{r}
-Temp.ts = ts(data_clean$Temperature, start = c(2010,6), frequency = 52)
-plot(Temp.ts, ylab="Temperature")
-Fuel.ts = ts(data_clean$Fuel_Price, start = c(2010,6), frequency = 52)
-plot(Fuel.ts, ylab="Fuel Price")
-Cpi.ts = ts(data_clean$CPI, start = c(2010,6), frequency = 52)
-plot(Cpi.ts, ylab="CPI")
-Rate.ts = ts(data_clean$Unemployment, start = c(2010,6), frequency = 52)
-plot(Rate.ts, ylab = "Unemployment Rate")
 HolidayFlag.ts = ts(data_clean$Holiday_Flag, start = c(2010,6), frequency = 52)
 Xmas.ts = ts(data_clean$is_Xmas_BF, start = c(2010,6), frequency = 52)
 Ny.ts = ts(data_clean$is_NY, start = c(2010,6), frequency = 52)

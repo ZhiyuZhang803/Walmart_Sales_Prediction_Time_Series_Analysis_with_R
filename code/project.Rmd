@@ -680,7 +680,7 @@ m5New.predict <- forecast(m5New, xreg = newdata.val[,c(3,2,7,8)], h = 38, level 
 accuracy(newdata.val[,1], m5New.predict$mean)
 # it's worse than the original m5, so choose m5
 
-autoplot(WeeklySales.ts, ylab= "Weekly Sales",series = 'Actual', main="Final Models for MLR")+
+autoplot(WeeklySales.ts, ylab= "Weekly Sales",series = 'Actual', main="Final Models for MLR", colour ="black")+
   autolayer(m5$fitted, series = "Fitted")+
   autolayer(ts(m5p, start = c(2012,8), frequency = 52), series = 'Predicted')
 ```

@@ -1,4 +1,4 @@
-# time_series_project
+# Walmart Sales Prediction with Time Series Analysis
 
 - This is time series analysis project for group 8.
 - NOTICE: When you finish your work, please cover original file OR upload a new file **WITH SPECIFIC TIMESTAMP**!!!
